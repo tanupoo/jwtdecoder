@@ -21,6 +21,9 @@ vecs = [
 ]
 
 for v in vecs:
+    print(".".join(jwd.jwt_decode(v, hex_sig=True, verbose=True)))
+
+for v in vecs:
     for i in [0,1,2]:
-        print(jwd.jwt_decode(v, i, True))
+        print(jwd.jwt_decode(v, i, hex_sig=True, verbose=True)[0])
 

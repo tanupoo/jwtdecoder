@@ -6,22 +6,30 @@ import base64
 def jwt_base64url_decode(s: str) -> str:
     return base64.urlsafe_b64decode(s + '='*(-len(s)%4))
 
-def jwt_decode(jwt_str: str, pos: int=None, verbose: bool=False):
+def jwt_decode(jwt_str: str, pos: int=None,
+               hex_sig: bool=False, verbose: bool=False) -> str:
+    def _decode(s: str, pos: int) -> str:
+        r = jwt_base64url_decode(s)
+        if pos == 2 and hex_sig is True:
+            return r.hex()
+        else:
+            return r.decode(errors="ignore")
+    #
     tidy_str = jwt_str.replace(" ","").replace("\n","")
     if pos is None:
         ret = []
-        for s in tidy_str.strip().split("."):
+        for i,s in enumerate(tidy_str.strip().split(".")):
             if verbose:
                 print(f"INPUT: {s}")
-            ret.append(jwt_base64url_decode(s).decode(errors="ignore"))
+            ret.append(_decode(s, i))
         return ret
     else:
         s = tidy_str.strip().split(".")[pos]
         if verbose:
             print(f"INPUT: {s} at #{pos}")
-        return jwt_base64url_decode(s).decode(errors="ignore")
+        return [_decode(s, pos)]
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     from argparse import ArgumentParser
     from argparse import ArgumentDefaultsHelpFormatter
     ap = ArgumentParser(
@@ -33,19 +41,23 @@ if __name__ == "__main__" :
                     help="specify the input is one JWT.")
     ap.add_argument("-p", action="store", dest="position",
                     type=int, default=None,
-                    help="specify the position to print binary mode."
-                    "0 origin")
+                    help="specify the position to print binary mode. "
+                    "e.g. -p1 means the header.")
+    ap.add_argument("-X", action="store_true", dest="raw_sig",
+                    help="specify to show the result of signature in raw.")
     ap.add_argument("-v", action="store_true", dest="verbose",
                     help="enable verbose mode.")
     opt = ap.parse_args()
     if opt.jwt:
         for jwt_str in opt.jwt:
-            for r in jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose):
+            for r in jwt_decode(jwt_str, pos=opt.position, hex_sig=False,
+                                verbose=opt.verbose):
                 print(r)
     elif opt.single_shot:
-        print(jwt_decode(sys.stdin.read(), pos=opt.position,
+        print(jwt_decode(sys.stdin.read(), pos=opt.position, hex_sig=False,
                          verbose=opt.verbose))
     else:
         for jwt_str in sys.stdin:
-            for r in jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose):
+            for r in jwt_decode(jwt_str, pos=opt.position, hex_sig=False,
+                                verbose=opt.verbose):
                 print(r)
