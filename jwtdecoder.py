@@ -1,27 +1,5 @@
 #!/usr/bin/env python
 
-"""
-## JWT decoder
-
-There are two ways to decode JWTs.
-
-```
-jwtdecoder.py JWTSTRING
-```
-
-```
-echo JWTSTRING | jwtdecoder.py
-```
-
-## Single shot mode.
-
-```
-cat | jwtdecoder.py -s
-```
-
-copy and paste JWTSTRING at once.
-"""
-
 import sys
 import base64
 
@@ -35,7 +13,7 @@ def jwt_decode(jwt_str: str, pos: int=None, verbose: bool=False):
         for s in tidy_str.strip().split("."):
             if verbose:
                 print(f"INPUT: {s}")
-            ret.append(jwt_base64url_decode(s))
+            ret.append(jwt_base64url_decode(s).decode(errors="ignore"))
         return ret
     else:
         s = tidy_str.strip().split(".")[pos]
@@ -62,9 +40,12 @@ if __name__ == "__main__" :
     opt = ap.parse_args()
     if opt.jwt:
         for jwt_str in opt.jwt:
-            jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose)
+            for r in jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose):
+                print(r)
     elif opt.single_shot:
-        jwt_decode(sys.stdin.read(), pos=opt.position, verbose=opt.verbose)
+        print(jwt_decode(sys.stdin.read(), pos=opt.position,
+                         verbose=opt.verbose))
     else:
         for jwt_str in sys.stdin:
-            jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose)
+            for r in jwt_decode(jwt_str, pos=opt.position, verbose=opt.verbose):
+                print(r)
