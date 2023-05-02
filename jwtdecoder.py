@@ -2,32 +2,64 @@
 
 import sys
 import base64
+import json
+
+name_map = {
+# JWT Claims
+"iss": "Issuer",
+"sub": "Subject",
+"aud": "Audience",
+"exp": "Expiration Time",
+"nbf": "Not Before",
+"iat": "Issued At",
+"jti": "JWT ID",
+
+# JWT Headers
+"typ": "Type",
+"cty": "Content Type",
+"alg": "Algorithm",
+}
 
 def jwt_base64url_decode(s: str) -> str:
     return base64.urlsafe_b64decode(s + '='*(-len(s)%4))
 
-def jwt_decode(jwt_str: str, pos: int=None,
-               hex_sig: bool=False, verbose: bool=False) -> str:
+def jwt_decode(
+        jwt_str: str,
+        pos: int=None,
+        sig_key: bytes=None,
+        verbose: bool=False
+        ) -> str:
     def _decode(s: str, pos: int) -> str:
         r = jwt_base64url_decode(s)
-        if pos == 2 and hex_sig is True:
-            return r.hex()
+        try:
+            j = json.loads(r.decode(errors="ignore"))
+        except json.decoder.JSONDecodeError as e:
+            return r
         else:
-            return r.decode(errors="ignore")
+            return j
     #
-    tidy_str = jwt_str.replace(" ","").replace("\n","")
+    tidy_str = "".join(jwt_str.split())
+    if verbose:
+        print(f"Entire Input: {tidy_str}")
     if pos is None:
         ret = []
-        for i,s in enumerate(tidy_str.strip().split(".")):
+        for i,s in enumerate(tidy_str.split(".")):
             if verbose:
-                print(f"INPUT: {s}")
+                print(f"INPUT {i}: {s}")
             ret.append(_decode(s, i))
         return ret
     else:
-        s = tidy_str.strip().split(".")[pos]
+        s = tidy_str.split(".")[pos]
         if verbose:
-            print(f"INPUT: {s} at #{pos}")
+            print(f"INPUT {pos}: {s}")
         return [_decode(s, pos)]
+
+def jwt_pprint(jwt_items: str) -> str:
+    for v in jwt_items:
+        if isinstance(v, bytes):
+            print(v.hex())
+        else:
+            print(json.dumps(v))
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -43,21 +75,22 @@ if __name__ == "__main__":
                     type=int, default=None,
                     help="specify the position to print binary mode. "
                     "e.g. -p1 means the header.")
-    ap.add_argument("-X", action="store_true", dest="raw_sig",
-                    help="specify to show the result of signature in raw.")
+    ap.add_argument("-k", action="store", dest="sig_key",
+                    help="specify the key of the signature. "
+                        "a string key is supported.")
     ap.add_argument("-v", action="store_true", dest="verbose",
                     help="enable verbose mode.")
     opt = ap.parse_args()
     if opt.jwt:
         for jwt_str in opt.jwt:
-            for r in jwt_decode(jwt_str, pos=opt.position, hex_sig=False,
-                                verbose=opt.verbose):
-                print(r)
+            for r in jwt_decode(jwt_str, pos=opt.position,
+                                sig_key=opt.sig_key, verbose=opt.verbose):
+                jwt_print(r)
     elif opt.single_shot:
-        print(jwt_decode(sys.stdin.read(), pos=opt.position, hex_sig=False,
-                         verbose=opt.verbose))
+        jwt_print(jwt_decode(sys.stdin.read(), pos=opt.position,
+                             sig_key=opt.sig_key, verbose=opt.verbose))
     else:
         for jwt_str in sys.stdin:
-            for r in jwt_decode(jwt_str, pos=opt.position, hex_sig=False,
-                                verbose=opt.verbose):
-                print(r)
+            r = jwt_decode(jwt_str, pos=opt.position, sig_key=opt.sig_key,
+                           verbose=opt.verbose)
+            jwt_pprint(r)
