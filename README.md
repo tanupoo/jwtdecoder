@@ -3,7 +3,7 @@ jwtdecoder
 
 A simple JWT decoder.
 
-There are two ways to decode JWTs.
+It can take a JWT string from an argument, or stdin.
 
 ```
 jwtdecoder.py JWTSTRING
@@ -13,11 +13,12 @@ jwtdecoder.py JWTSTRING
 echo JWTSTRING | jwtdecoder.py
 ```
 
-```
-cat | jwtdecoder.py -s
-```
+A new line charactor is treated as a separator of multiple JWT strings.
+So that you can decode some JWTs at one time.
 
-in the 3rd way, copy and paste JWTSTRING to the terminal at once.
+```
+cat multiple_jwt_lines.txt | jwtdecoder.py
+```
 
 ## examples
 
